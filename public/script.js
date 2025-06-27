@@ -191,4 +191,42 @@ socket.on('createRoom', (room) => {
     rooms[room] = { users: 0 };
     broadcastRooms();
   }
-}); 
+});
+
+// Canvas persistence
+socket.on('loadCanvas', (drawingData) => {
+  // Clear current canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Redraw all stored strokes
+  drawingData.forEach(stroke => {
+    const w = canvas.width;
+    const h = canvas.height;
+    drawLine(
+      stroke.x0 * w, stroke.y0 * h, 
+      stroke.x1 * w, stroke.y1 * h, 
+      stroke.color, stroke.size, false
+    );
+  });
+});
+
+socket.on('clearCanvas', () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+});
+
+// Add clear canvas button
+const clearBtn = document.createElement('button');
+clearBtn.textContent = 'Clear Canvas';
+clearBtn.style.background = '#ffc107';
+clearBtn.style.color = '#000';
+clearBtn.style.border = 'none';
+clearBtn.style.borderRadius = '4px';
+clearBtn.style.padding = '0.5rem 1rem';
+clearBtn.style.cursor = 'pointer';
+clearBtn.style.marginRight = '1rem';
+clearBtn.onclick = () => {
+  if (room) {
+    socket.emit('clearCanvas', room);
+  }
+};
+document.querySelector('.toolbar').insertBefore(clearBtn, saveBtn); 
