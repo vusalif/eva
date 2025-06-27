@@ -127,16 +127,9 @@ const createRoomBtn = document.getElementById('createRoomBtn');
 const leaveBtn = document.getElementById('leaveBtn');
 const currentRoomSpan = document.getElementById('currentRoom');
 
-// Hide drawing area until in a room
-function showLobby() {
-  lobby.style.display = '';
-  drawArea.style.display = 'none';
-  room = '';
-}
+// Remove all showLobby/hide logic, sidebar is always visible
 function showDrawArea(roomName) {
-  lobby.style.display = 'none';
-  drawArea.style.display = '';
-  currentRoomSpan.textContent = 'Room: ' + roomName;
+  currentRoomSpan.textContent = roomName ? 'Room: ' + roomName : '';
 }
 
 // Render room list
@@ -173,7 +166,9 @@ function joinRoom(roomName) {
 function leaveRoom() {
   if (room) {
     socket.emit('leaveRoom', room);
-    showLobby();
+    room = '';
+    showDrawArea('');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 }
 
@@ -187,6 +182,13 @@ createRoomBtn.addEventListener('click', () => {
 
 leaveBtn.addEventListener('click', leaveRoom);
 
-// On load, show lobby and request room list
-showLobby();
-socket.emit('getRooms'); 
+// On load, just clear current room
+showDrawArea('');
+socket.emit('getRooms');
+
+socket.on('createRoom', (room) => {
+  if (!rooms[room]) {
+    rooms[room] = { users: 0 };
+    broadcastRooms();
+  }
+}); 
