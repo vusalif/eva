@@ -20,11 +20,37 @@
     <main class="main-content">
       <div id="drawArea" class="draw-area">
         <div class="toolbar">
-          <span id="currentRoom"></span>
-          <button id="leaveBtn">Leave Room</button>
-          <input type="color" id="colorPicker" value="#000000" />
-          <input type="range" id="penSize" min="1" max="20" value="3" />
-          <button id="saveBtn">Save Drawing</button>
+          <div class="room-info">
+            <span id="currentRoom"></span>
+            <button id="leaveBtn">Leave Room</button>
+          </div>
+          <div class="drawing-tools">
+            <div class="tool-group">
+              <label>Brush Type:</label>
+              <select id="brushType">
+                <option value="pencil">Pencil</option>
+                <option value="marker">Marker</option>
+                <option value="spray">Spray</option>
+                <option value="eraser">Eraser</option>
+              </select>
+            </div>
+            <div class="tool-group">
+              <label>Color:</label>
+              <input type="color" id="colorPicker" value="#000000" />
+            </div>
+            <div class="tool-group">
+              <label>Size: <span id="sizeValue">3</span></label>
+              <input type="range" id="penSize" min="1" max="50" value="3" />
+            </div>
+            <div class="tool-group">
+              <label>Opacity: <span id="opacityValue">100%</span></label>
+              <input type="range" id="opacity" min="10" max="100" value="100" />
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button id="clearBtn" style="display:none;">Clear Canvas</button>
+            <button id="saveBtn">Save Drawing</button>
+          </div>
         </div>
         <div class="canvas-container">
           <canvas id="drawCanvas" width="800" height="600"></canvas>

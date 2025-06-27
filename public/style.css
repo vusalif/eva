@@ -11,11 +11,46 @@ body {
 .toolbar {
   display: flex;
   gap: 1rem;
-  margin: 2rem 0 1rem 0;
+  margin-bottom: 1rem;
   background: #fff;
   padding: 1rem 2rem;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.room-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 200px;
+}
+
+.drawing-tools {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 120px;
+}
+
+.tool-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
   align-items: center;
 }
 
@@ -25,7 +60,7 @@ body {
   border-radius: 4px;
 }
 
-#joinBtn, #saveBtn {
+#joinBtn, #saveBtn, #leaveBtn {
   padding: 0.5rem 1rem;
   border: none;
   background: #007bff;
@@ -39,8 +74,27 @@ body {
   background: #0056b3;
 }
 
-#colorPicker, #penSize {
+#leaveBtn {
+  background: #dc3545;
+}
+
+#leaveBtn:hover {
+  background: #a71d2a;
+}
+
+#colorPicker, #penSize, #opacity, #brushType {
   cursor: pointer;
+}
+
+#brushType {
+  padding: 0.25rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#currentRoom {
+  font-weight: bold;
+  color: #007bff;
 }
 
 .canvas-container {
@@ -141,26 +195,6 @@ body {
 
 .join-room-btn:hover {
   background: #0056b3;
-}
-
-#leaveBtn {
-  background: #dc3545;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  margin-right: 1rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-#leaveBtn:hover {
-  background: #a71d2a;
-}
-
-#currentRoom {
-  font-weight: bold;
-  margin-right: 1rem;
 }
 
 .chat-section {

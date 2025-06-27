@@ -10,7 +10,9 @@ const saveBtn = document.getElementById('saveBtn');
 let drawing = false;
 let current = {
   color: colorPicker.value,
-  size: penSize.value
+  size: penSize.value,
+  opacity: document.getElementById('opacity').value,
+  brushType: document.getElementById('brushType').value
 };
 let room = '';
 
@@ -18,15 +20,47 @@ let room = '';
 const socket = io("https://eva-kreb.onrender.com");
 
 // Drawing helpers
-function drawLine(x0, y0, x1, y1, color, size, emit) {
-  ctx.strokeStyle = color;
+function drawLine(x0, y0, x1, y1, color, size, opacity, brushType, emit) {
+  ctx.globalAlpha = opacity / 100;
+  
+  if (brushType === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = color;
+  }
+  
   ctx.lineWidth = size;
   ctx.lineCap = 'round';
+  
+  if (brushType === 'marker') {
+    ctx.lineJoin = 'round';
+  } else if (brushType === 'spray') {
+    // Spray effect - draw multiple small circles
+    const steps = Math.max(1, Math.floor(Math.sqrt((x1-x0)**2 + (y1-y0)**2) / 2));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = x0 + (x1 - x0) * t;
+      const y = y0 + (y1 - y0) * t;
+      ctx.beginPath();
+      ctx.arc(x, y, size / 3, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    return;
+  }
+  
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.lineTo(x1, y1);
   ctx.stroke();
   ctx.closePath();
+  
+  // Reset global settings
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 
   if (!emit) return;
   const w = canvas.width;
@@ -39,7 +73,9 @@ function drawLine(x0, y0, x1, y1, color, size, emit) {
       x1: x1 / w,
       y1: y1 / h,
       color,
-      size
+      size,
+      opacity,
+      brushType
     }
   });
 }
@@ -54,7 +90,7 @@ canvas.addEventListener('mousedown', (e) => {
 canvas.addEventListener('mousemove', (e) => {
   if (!drawing) return;
   const pos = getPos(e);
-  drawLine(last.x, last.y, pos.x, pos.y, current.color, current.size, true);
+  drawLine(last.x, last.y, pos.x, pos.y, current.color, current.size, current.opacity, current.brushType, true);
   last = pos;
 });
 canvas.addEventListener('mouseup', () => { drawing = false; });
@@ -69,7 +105,7 @@ canvas.addEventListener('touchstart', (e) => {
 canvas.addEventListener('touchmove', (e) => {
   if (!drawing) return;
   const pos = getTouchPos(e);
-  drawLine(last.x, last.y, pos.x, pos.y, current.color, current.size, true);
+  drawLine(last.x, last.y, pos.x, pos.y, current.color, current.size, current.opacity, current.brushType, true);
   last = pos;
   e.preventDefault();
 }, { passive: false });
@@ -112,7 +148,7 @@ saveBtn.addEventListener('click', () => {
 socket.on('drawing', (data) => {
   const w = canvas.width;
   const h = canvas.height;
-  drawLine(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.size, false);
+  drawLine(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.size, data.opacity, data.brushType, false);
 });
 
 // Prevent scrolling on touch devices when drawing
@@ -205,7 +241,7 @@ socket.on('loadCanvas', (drawingData) => {
     drawLine(
       stroke.x0 * w, stroke.y0 * h, 
       stroke.x1 * w, stroke.y1 * h, 
-      stroke.color, stroke.size, false
+      stroke.color, stroke.size, stroke.opacity, stroke.brushType, false
     );
   });
 });
@@ -271,57 +307,61 @@ socket.on('loadChat', (messages) => {
 // Receive chat messages
 socket.on('chatMessage', addChatMessage);
 
-// Clear canvas voting system
-let currentVoteModal = null;
-
-function showVoteModal(message) {
-  // Remove existing modal if any
-  if (currentVoteModal) {
-    document.body.removeChild(currentVoteModal);
-  }
-  
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `
-    <div class="modal">
-      <h3>Clear Canvas Vote</h3>
-      <p>${message}</p>
-      <div class="modal-buttons">
-        <button class="modal-btn yes">Yes, Clear</button>
-        <button class="modal-btn no">No, Keep</button>
-      </div>
-    </div>
-  `;
-  
-  modal.querySelector('.yes').onclick = () => {
-    socket.emit('voteClearCanvas', { room, vote: 'yes', userId });
-    document.body.removeChild(modal);
-    currentVoteModal = null;
-  };
-  
-  modal.querySelector('.no').onclick = () => {
-    socket.emit('voteClearCanvas', { room, vote: 'no', userId });
-    document.body.removeChild(modal);
-    currentVoteModal = null;
-  };
-  
-  document.body.appendChild(modal);
-  currentVoteModal = modal;
-}
-
-socket.on('clearCanvasVote', (data) => {
-  if (data.votes.total > 0) {
-    showVoteModal(`${data.message} (${data.votes.yes} yes, ${data.votes.no} no of ${data.votes.total} users)`);
-  } else {
-    showVoteModal(data.message);
-  }
+// Room creator detection
+let isRoomCreator = false;
+socket.on('roomCreator', (isCreator) => {
+  isRoomCreator = isCreator;
+  clearBtn.style.display = isCreator ? 'block' : 'none';
 });
 
-// Update clear canvas button to request vote instead of immediate clear
+// Clear canvas (only for room creator)
 clearBtn.onclick = () => {
-  if (room) {
-    socket.emit('requestClearCanvas', room);
+  if (room && isRoomCreator) {
+    socket.emit('clearCanvas', room);
   }
 };
 
-document.querySelector('.toolbar').insertBefore(clearBtn, saveBtn); 
+// Update size and opacity display
+penSize.addEventListener('input', (e) => {
+  current.size = e.target.value;
+  sizeValue.textContent = e.target.value;
+});
+
+opacity.addEventListener('input', (e) => {
+  current.opacity = e.target.value;
+  opacityValue.textContent = e.target.value + '%';
+});
+
+// Brush type and color controls
+brushType.addEventListener('input', (e) => {
+  current.brushType = e.target.value;
+});
+
+colorPicker.addEventListener('input', (e) => {
+  current.color = e.target.value;
+});
+
+// Update drawing data emission
+function drawLine(x0, y0, x1, y1, color, size, opacity, brushType, emit) {
+  // ... existing drawing logic ...
+  
+  if (!emit) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  socket.emit('drawing', {
+    room,
+    data: {
+      x0: x0 / w,
+      y0: y0 / h,
+      x1: x1 / w,
+      y1: y1 / h,
+      color,
+      size,
+      opacity,
+      brushType
+    }
+  });
+}
+
+// Remove voting system code
+// ... existing code ... 
