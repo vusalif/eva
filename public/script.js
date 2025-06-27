@@ -224,9 +224,104 @@ clearBtn.style.borderRadius = '4px';
 clearBtn.style.padding = '0.5rem 1rem';
 clearBtn.style.cursor = 'pointer';
 clearBtn.style.marginRight = '1rem';
+
+// Chat and voting elements
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+
+// Generate unique user ID and username
+const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+const username = 'Player_' + Math.floor(Math.random() * 1000);
+
+// Chat functionality
+function addChatMessage(msg) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message';
+  messageDiv.innerHTML = `
+    <span class="username">${msg.username}</span>
+    <span class="time">${msg.time}</span>
+    <div>${msg.message}</div>
+  `;
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function sendMessage() {
+  const message = chatInput.value.trim();
+  if (message && room) {
+    socket.emit('chatMessage', { room, message, username });
+    chatInput.value = '';
+  }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    sendMessage();
+  }
+});
+
+// Load chat messages
+socket.on('loadChat', (messages) => {
+  chatMessages.innerHTML = '';
+  messages.forEach(addChatMessage);
+});
+
+// Receive chat messages
+socket.on('chatMessage', addChatMessage);
+
+// Clear canvas voting system
+let currentVoteModal = null;
+
+function showVoteModal(message) {
+  // Remove existing modal if any
+  if (currentVoteModal) {
+    document.body.removeChild(currentVoteModal);
+  }
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal">
+      <h3>Clear Canvas Vote</h3>
+      <p>${message}</p>
+      <div class="modal-buttons">
+        <button class="modal-btn yes">Yes, Clear</button>
+        <button class="modal-btn no">No, Keep</button>
+      </div>
+    </div>
+  `;
+  
+  modal.querySelector('.yes').onclick = () => {
+    socket.emit('voteClearCanvas', { room, vote: 'yes', userId });
+    document.body.removeChild(modal);
+    currentVoteModal = null;
+  };
+  
+  modal.querySelector('.no').onclick = () => {
+    socket.emit('voteClearCanvas', { room, vote: 'no', userId });
+    document.body.removeChild(modal);
+    currentVoteModal = null;
+  };
+  
+  document.body.appendChild(modal);
+  currentVoteModal = modal;
+}
+
+socket.on('clearCanvasVote', (data) => {
+  if (data.votes.total > 0) {
+    showVoteModal(`${data.message} (${data.votes.yes} yes, ${data.votes.no} no of ${data.votes.total} users)`);
+  } else {
+    showVoteModal(data.message);
+  }
+});
+
+// Update clear canvas button to request vote instead of immediate clear
 clearBtn.onclick = () => {
   if (room) {
-    socket.emit('clearCanvas', room);
+    socket.emit('requestClearCanvas', room);
   }
 };
+
 document.querySelector('.toolbar').insertBefore(clearBtn, saveBtn); 
