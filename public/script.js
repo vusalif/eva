@@ -17,7 +17,7 @@ let current = {
 let room = '';
 
 // Socket.io setup
-const socket = io();
+const socket = io("https://eva-kreb.onrender.com");
 
 // Drawing helpers
 function drawLine(x0, y0, x1, y1, color, size, emit) {
@@ -128,4 +128,77 @@ socket.on('drawing', (data) => {
 });
 
 // Prevent scrolling on touch devices when drawing
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false }); 
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
+
+// Lobby and room logic
+const lobby = document.getElementById('lobby');
+const drawArea = document.getElementById('drawArea');
+const roomList = document.getElementById('roomList');
+const newRoomInput = document.getElementById('newRoomInput');
+const createRoomBtn = document.getElementById('createRoomBtn');
+const leaveBtn = document.getElementById('leaveBtn');
+const currentRoomSpan = document.getElementById('currentRoom');
+
+// Hide drawing area until in a room
+function showLobby() {
+  lobby.style.display = '';
+  drawArea.style.display = 'none';
+  room = '';
+}
+function showDrawArea(roomName) {
+  lobby.style.display = 'none';
+  drawArea.style.display = '';
+  currentRoomSpan.textContent = 'Room: ' + roomName;
+}
+
+// Render room list
+function renderRoomList(rooms) {
+  roomList.innerHTML = '';
+  if (rooms.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'No rooms yet. Create one!';
+    roomList.appendChild(li);
+    return;
+  }
+  rooms.forEach(r => {
+    const li = document.createElement('li');
+    li.textContent = r;
+    const joinBtn = document.createElement('button');
+    joinBtn.textContent = 'Join';
+    joinBtn.className = 'join-room-btn';
+    joinBtn.onclick = () => joinRoom(r);
+    li.appendChild(joinBtn);
+    roomList.appendChild(li);
+  });
+}
+
+// Socket.io lobby events
+socket.on('roomList', renderRoomList);
+
+function joinRoom(roomName) {
+  room = roomName;
+  socket.emit('joinRoom', room);
+  showDrawArea(room);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function leaveRoom() {
+  if (room) {
+    socket.emit('leaveRoom', room);
+    showLobby();
+  }
+}
+
+createRoomBtn.addEventListener('click', () => {
+  const val = newRoomInput.value.trim();
+  if (!val) return alert('Enter a room name!');
+  socket.emit('createRoom', val);
+  joinRoom(val);
+  newRoomInput.value = '';
+});
+
+leaveBtn.addEventListener('click', leaveRoom);
+
+// On load, show lobby and request room list
+showLobby();
+socket.emit('getRooms'); 
