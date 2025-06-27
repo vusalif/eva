@@ -5,8 +5,6 @@ const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 const colorPicker = document.getElementById('colorPicker');
 const penSize = document.getElementById('penSize');
-const roomInput = document.getElementById('roomInput');
-const joinBtn = document.getElementById('joinBtn');
 const saveBtn = document.getElementById('saveBtn');
 
 let drawing = false;
@@ -99,16 +97,6 @@ colorPicker.addEventListener('input', (e) => {
 });
 penSize.addEventListener('input', (e) => {
   current.size = e.target.value;
-});
-
-// Room join logic
-joinBtn.addEventListener('click', () => {
-  const val = roomInput.value.trim();
-  if (!val) return alert('Enter a room name!');
-  room = val;
-  socket.emit('joinRoom', room);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  alert('Joined room: ' + room);
 });
 
 // Save drawing as image
