@@ -17,11 +17,11 @@ const io = new Server(server, {
 // Serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Lobby: Track active rooms, canvas data, chat, and clear votes
+// Lobby: Track active rooms, canvas data, and chat
 let rooms = {};
 let canvasData = {}; // Store drawing data for each room
 let chatMessages = {}; // Store chat messages for each room
-let clearVotes = {}; // Track clear canvas votes: {room: {userId: 'yes'|'no'}}
+let roomCreators = {}; // Track who created each room
 
 function broadcastRooms() {
   io.emit('roomList', Object.keys(rooms));
@@ -38,7 +38,7 @@ io.on('connection', (socket) => {
       rooms[room] = { users: 0 };
       canvasData[room] = []; // Initialize empty canvas for new room
       chatMessages[room] = []; // Initialize empty chat for new room
-      clearVotes[room] = {}; // Initialize empty votes for new room
+      roomCreators[room] = socket.id; // Track room creator
       broadcastRooms();
     }
   });
@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
       rooms[room] = { users: 0 };
       canvasData[room] = [];
       chatMessages[room] = [];
-      clearVotes[room] = {};
+      roomCreators[room] = socket.id; // First joiner becomes creator
     }
     rooms[room].users++;
     broadcastRooms();
@@ -67,6 +67,9 @@ io.on('connection', (socket) => {
     if (chatMessages[room] && chatMessages[room].length > 0) {
       socket.emit('loadChat', chatMessages[room]);
     }
+    
+    // Tell user if they are the room creator
+    socket.emit('roomCreator', socket.id === roomCreators[room]);
     
     console.log(`User joined room: ${room}`);
   });
@@ -103,43 +106,12 @@ io.on('connection', (socket) => {
     io.to(room).emit('chatMessage', chatMsg);
   });
 
-  socket.on('requestClearCanvas', (room) => {
-    // Reset votes for this room
-    clearVotes[room] = {};
-    io.to(room).emit('clearCanvasVote', { 
-      message: 'Someone wants to clear the canvas. Vote:',
-      votes: { yes: 0, no: 0 }
-    });
-  });
-
-  socket.on('voteClearCanvas', ({ room, vote, userId }) => {
-    if (!clearVotes[room]) clearVotes[room] = {};
-    clearVotes[room][userId] = vote;
-    
-    const yesCount = Object.values(clearVotes[room]).filter(v => v === 'yes').length;
-    const noCount = Object.values(clearVotes[room]).filter(v => v === 'no').length;
-    const totalUsers = rooms[room] ? rooms[room].users : 0;
-    
-    io.to(room).emit('clearCanvasVote', {
-      message: `Clear canvas vote: ${yesCount} yes, ${noCount} no`,
-      votes: { yes: yesCount, no: noCount, total: totalUsers }
-    });
-    
-    // If majority votes yes, clear the canvas
-    if (yesCount > noCount && yesCount + noCount >= Math.ceil(totalUsers / 2)) {
-      canvasData[room] = [];
-      clearVotes[room] = {};
-      io.to(room).emit('clearCanvas');
-      io.to(room).emit('clearCanvasVote', {
-        message: 'Canvas cleared by majority vote!',
-        votes: { yes: 0, no: 0, total: 0 }
-      });
-    }
-  });
-
   socket.on('clearCanvas', (room) => {
-    canvasData[room] = [];
-    socket.to(room).emit('clearCanvas');
+    // Only allow room creator to clear canvas
+    if (roomCreators[room] === socket.id) {
+      canvasData[room] = [];
+      io.to(room).emit('clearCanvas');
+    }
   });
 
   socket.on('leaveRoom', (room) => {
@@ -150,7 +122,7 @@ io.on('connection', (socket) => {
         delete rooms[room];
         delete canvasData[room];
         delete chatMessages[room];
-        delete clearVotes[room];
+        delete roomCreators[room];
       }
       broadcastRooms();
     }
@@ -165,7 +137,7 @@ io.on('connection', (socket) => {
           delete rooms[room];
           delete canvasData[room];
           delete chatMessages[room];
-          delete clearVotes[room];
+          delete roomCreators[room];
         }
       }
     }
