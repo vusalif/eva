@@ -10,7 +10,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: '*', // Allow all origins for development
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
@@ -75,6 +76,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('drawing', ({ room, data }) => {
+    console.log(`Drawing in room ${room}:`, data);
     // Store the drawing data for persistence
     if (!canvasData[room]) canvasData[room] = [];
     canvasData[room].push(data);
@@ -88,6 +90,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chatMessage', ({ room, message, username }) => {
+    console.log(`Chat message in room ${room} from ${username}:`, message);
     const chatMsg = {
       id: Date.now() + Math.random(),
       message,
@@ -150,6 +153,7 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+  console.log(`Local access: http://localhost:${PORT}`);
 }); 
