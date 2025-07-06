@@ -48,7 +48,8 @@ io.on('connection', (socket) => {
     socket.emit('roomList', Object.keys(rooms));
   });
 
-  socket.on('joinRoom', (room) => {
+  socket.on('joinRoom', (room, username) => {
+    socket.username = username; // Store username in socket object
     socket.join(room);
     if (!rooms[room]) {
       rooms[room] = { users: 0 };
@@ -71,6 +72,27 @@ io.on('connection', (socket) => {
     
     // Tell user if they are the room creator
     socket.emit('roomCreator', socket.id === roomCreators[room]);
+    
+    // Send system message to all users in the room
+    const systemMsg = {
+      id: Date.now() + Math.random(),
+      message: `${socket.username || 'A user'} joined the room.`,
+      username: 'System',
+      time: new Date().toLocaleTimeString(),
+      type: 'system'
+    };
+    
+    console.log('Sending join system message:', systemMsg);
+    
+    if (!chatMessages[room]) chatMessages[room] = [];
+    chatMessages[room].push(systemMsg);
+    
+    // Limit chat messages to last 50
+    if (chatMessages[room].length > 50) {
+      chatMessages[room] = chatMessages[room].slice(-50);
+    }
+    
+    io.to(room).emit('chatMessage', systemMsg);
     
     console.log(`User joined room: ${room}`);
   });
@@ -95,7 +117,8 @@ io.on('connection', (socket) => {
       id: Date.now() + Math.random(),
       message,
       username,
-      time: new Date().toLocaleTimeString()
+      time: new Date().toLocaleTimeString(),
+      type: 'user'
     };
     
     if (!chatMessages[room]) chatMessages[room] = [];
@@ -110,14 +133,74 @@ io.on('connection', (socket) => {
   });
 
   socket.on('clearCanvas', (room) => {
-    // Only allow room creator to clear canvas
-    if (roomCreators[room] === socket.id) {
-      canvasData[room] = [];
-      io.to(room).emit('clearCanvas');
+    // Allow any user to clear canvas
+    canvasData[room] = [];
+    io.to(room).emit('clearCanvas');
+    
+    // Send system message about canvas clear
+    const systemMsg = {
+      id: Date.now() + Math.random(),
+      message: `${socket.username || 'A user'} cleared the canvas.`,
+      username: 'System',
+      time: new Date().toLocaleTimeString(),
+      type: 'system'
+    };
+    
+    if (!chatMessages[room]) chatMessages[room] = [];
+    chatMessages[room].push(systemMsg);
+    
+    // Limit chat messages to last 50
+    if (chatMessages[room].length > 50) {
+      chatMessages[room] = chatMessages[room].slice(-50);
     }
+    
+    io.to(room).emit('chatMessage', systemMsg);
+  });
+
+  socket.on('requestClearCanvas', (room) => {
+    // Send clear canvas request message
+    const requestMsg = {
+      id: Date.now() + Math.random(),
+      message: `${socket.username || 'A user'} wants to clear the whole canvas.`,
+      username: 'System',
+      time: new Date().toLocaleTimeString(),
+      type: 'clear-request'
+    };
+    
+    if (!chatMessages[room]) chatMessages[room] = [];
+    chatMessages[room].push(requestMsg);
+    
+    // Limit chat messages to last 50
+    if (chatMessages[room].length > 50) {
+      chatMessages[room] = chatMessages[room].slice(-50);
+    }
+    
+    io.to(room).emit('chatMessage', requestMsg);
   });
 
   socket.on('leaveRoom', (room) => {
+    // Send system message before leaving
+    const systemMsg = {
+      id: Date.now() + Math.random(),
+      message: `${socket.username || 'A user'} left the room.`,
+      username: 'System',
+      time: new Date().toLocaleTimeString(),
+      type: 'system'
+    };
+    
+    console.log('Sending leave system message:', systemMsg);
+    
+    if (chatMessages[room]) {
+      chatMessages[room].push(systemMsg);
+      
+      // Limit chat messages to last 50
+      if (chatMessages[room].length > 50) {
+        chatMessages[room] = chatMessages[room].slice(-50);
+      }
+      
+      io.to(room).emit('chatMessage', systemMsg);
+    }
+    
     socket.leave(room);
     if (rooms[room]) {
       rooms[room].users = Math.max(0, rooms[room].users - 1);
@@ -132,9 +215,29 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnecting', () => {
-    // Remove user from all rooms
+    // Remove user from all rooms and send system messages
     for (const room of socket.rooms) {
       if (room !== socket.id && rooms[room]) {
+        // Send system message for disconnection
+        const systemMsg = {
+          id: Date.now() + Math.random(),
+          message: `${socket.username || 'A user'} disconnected.`,
+          username: 'System',
+          time: new Date().toLocaleTimeString(),
+          type: 'system'
+        };
+        
+        if (chatMessages[room]) {
+          chatMessages[room].push(systemMsg);
+          
+          // Limit chat messages to last 50
+          if (chatMessages[room].length > 50) {
+            chatMessages[room] = chatMessages[room].slice(-50);
+          }
+          
+          socket.to(room).emit('chatMessage', systemMsg);
+        }
+        
         rooms[room].users = Math.max(0, rooms[room].users - 1);
         if (rooms[room].users === 0) {
           delete rooms[room];
