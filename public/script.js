@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const chatMessages = document.getElementById('chatMessages');
   const chatInput = document.getElementById('chatInput');
   const sendBtn = document.getElementById('sendBtn');
+  const lobbyPanel = document.querySelector('.lobby-panel');
+  const canvasPanel = document.querySelector('.canvas-panel');
+  const chatPanel = document.querySelector('.chat-panel');
 
   // State
   let drawing = false;
@@ -33,6 +36,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Socket.io setup
   const socket = io("https://eva-kreb.onrender.com");
+
+  // Panel visibility functions
+  function showLobby() {
+    lobbyPanel.style.display = 'flex';
+    canvasPanel.style.display = 'none';
+    chatPanel.style.display = 'none';
+    document.querySelector('.main-layout').classList.remove('canvas-chat-only');
+  }
+
+  function showCanvasAndChat() {
+    lobbyPanel.style.display = 'none';
+    canvasPanel.style.display = 'flex';
+    chatPanel.style.display = 'flex';
+    document.querySelector('.main-layout').classList.add('canvas-chat-only');
+  }
 
   // Drawing helpers
   function drawLine(x0, y0, x1, y1, color, size, opacity, emit) {
@@ -253,6 +271,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Request chat and canvas for this room
     socket.emit('getChat', room);
     socket.emit('getCanvas', room);
+    // Hide lobby and show canvas/chat
+    showCanvasAndChat();
   }
 
   createRoomBtn.addEventListener('click', () => {
@@ -263,7 +283,8 @@ document.addEventListener('DOMContentLoaded', function () {
     newRoomInput.value = '';
   });
 
-  // On load, just clear current room and get rooms
+  // On load, show lobby and get rooms
+  showLobby();
   socket.emit('getRooms');
 
   // Canvas persistence per room
