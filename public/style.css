@@ -1088,4 +1088,80 @@ h3, .panel-header, .chat-messages {
     width: 32px;
     height: 32px;
   }
+}
+
+/* Username Modal */
+.username-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  font-family: 'Jockey One', sans-serif;
+}
+
+.username-modal-content {
+  background: #f5f5dc;
+  padding: 40px;
+  border-radius: 42px;
+  border: 4px solid #000;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.username-modal-content h2 {
+  margin: 0 0 20px 0;
+  color: #000;
+  font-size: 24px;
+}
+
+.username-modal-content p {
+  margin: 0 0 25px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.username-modal-content input {
+  width: 100%;
+  padding: 15px;
+  border: 3px solid #000;
+  border-radius: 21px;
+  font-size: 16px;
+  font-family: 'Jockey One', sans-serif;
+  margin-bottom: 25px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.username-modal-content input:focus {
+  outline: none;
+  border-color: #666;
+}
+
+.username-modal-content button {
+  background: #000;
+  color: #f5f5dc;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 21px;
+  font-size: 16px;
+  font-family: 'Jockey One', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.username-modal-content button:hover {
+  background: #333;
+  transform: translateY(-2px);
+}
+
+.username-modal.hide {
+  display: none;
 } 

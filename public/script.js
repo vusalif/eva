@@ -3,6 +3,10 @@
 
 document.addEventListener('DOMContentLoaded', function () {
   // DOM elements
+  const usernameModal = document.getElementById('usernameModal');
+  const usernameInput = document.getElementById('usernameInput');
+  const confirmUsernameBtn = document.getElementById('confirmUsernameBtn');
+  
   const lobbyScreen = document.getElementById('lobbyScreen');
   const gameRoomScreen = document.getElementById('gameRoomScreen');
   const roomList = document.getElementById('roomList');
@@ -39,9 +43,67 @@ document.addEventListener('DOMContentLoaded', function () {
   let strokes = [];
   let redoStack = [];
   let currentStroke = null;
+  
+  // Generate unique user ID and default username
+  const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  let username = 'Player_' + Math.floor(Math.random() * 1000);
+  let usernameSet = false;
 
   // Socket.io setup
-  const socket = io("https://eva-kreb.onrender.com");
+  const socket = io();
+  
+  // Debug connection
+  socket.on('connect', () => {
+    console.log('Connected to server');
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+  });
+
+  // Username prompt functionality
+  function showUsernamePrompt() {
+    usernameModal.style.display = 'flex';
+    usernameInput.focus();
+    usernameInput.value = username.replace('Player_', '');
+  }
+
+  function hideUsernamePrompt() {
+    usernameModal.style.display = 'none';
+    usernameSet = true;
+  }
+
+  function setUsername() {
+    const newUsername = usernameInput.value.trim();
+    if (newUsername) {
+      username = newUsername;
+      hideUsernamePrompt();
+      // Now proceed with joining the room
+      proceedWithRoomJoin();
+    } else {
+      alert('Please enter a valid username!');
+      usernameInput.focus();
+    }
+  }
+
+  confirmUsernameBtn.addEventListener('click', setUsername);
+  usernameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setUsername();
+    }
+  });
+
+  // Store pending room join action
+  let pendingRoomJoin = null;
+
+  function proceedWithRoomJoin() {
+    if (pendingRoomJoin) {
+      const roomName = pendingRoomJoin;
+      pendingRoomJoin = null;
+      joinRoom(roomName);
+    }
+  }
 
   // Lobby logic
   function renderRoomList(rooms) {
@@ -55,7 +117,14 @@ document.addEventListener('DOMContentLoaded', function () {
     rooms.forEach(r => {
       const li = document.createElement('li');
       li.textContent = r;
-      li.onclick = () => joinRoom(r);
+      li.onclick = () => {
+        if (!usernameSet) {
+          pendingRoomJoin = r;
+          showUsernamePrompt();
+        } else {
+          joinRoom(r);
+        }
+      };
       roomList.appendChild(li);
     });
   }
@@ -64,8 +133,14 @@ document.addEventListener('DOMContentLoaded', function () {
   createRoomBtn.addEventListener('click', () => {
     const val = newRoomInput.value.trim();
     if (!val) return alert('Enter a room name!');
-    socket.emit('createRoom', val);
-    joinRoom(val);
+    
+    if (!usernameSet) {
+      pendingRoomJoin = val;
+      showUsernamePrompt();
+    } else {
+      socket.emit('createRoom', val);
+      joinRoom(val);
+    }
     newRoomInput.value = '';
   });
 
@@ -99,6 +174,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // On load, show lobby and get rooms
   lobbyScreen.style.display = 'flex';
   gameRoomScreen.style.display = 'none';
+  usernameModal.style.display = 'none';
   socket.emit('getRooms');
 
   // Brush settings toggle and close
@@ -151,7 +227,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!emit) return;
     const w = canvas.width;
     const h = canvas.height;
-    socket.emit('drawing', {
+    const drawingData = {
+      room: room,
       data: {
         x0: x0 / w,
         y0: y0 / h,
@@ -161,7 +238,9 @@ document.addEventListener('DOMContentLoaded', function () {
         size,
         opacity
       }
-    });
+    };
+    console.log('Sending drawing data:', drawingData);
+    socket.emit('drawing', drawingData);
   }
 
   // Redraw all strokes
@@ -296,15 +375,35 @@ document.addEventListener('DOMContentLoaded', function () {
     strokes = [];
     redoStack = [];
     currentStroke = null;
+    socket.emit('clearCanvas', room);
   });
 
   // Receive drawing data from others
   socket.on('drawing', (data) => {
+    console.log('Received drawing data:', data);
     // For collaborative: treat each remote stroke as a single-segment stroke
     const w = canvas.width;
     const h = canvas.height;
     drawLine(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.size, data.opacity, false);
     // Optionally, add to strokes for undo/redo (if you want collaborative undo/redo)
+  });
+
+  // Receive clear canvas event
+  socket.on('clearCanvas', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokes = [];
+    redoStack = [];
+    currentStroke = null;
+  });
+
+  // Load existing canvas data when joining room
+  socket.on('loadCanvas', (canvasData) => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const w = canvas.width;
+    const h = canvas.height;
+    canvasData.forEach(data => {
+      drawLine(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.size, data.opacity, false);
+    });
   });
 
   // Chat logic
@@ -323,7 +422,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function sendMessage() {
     const message = chatInput.value.trim();
     if (message) {
-      socket.emit('chatMessage', { message, username });
+      const chatData = { room: room, message, username };
+      console.log('Sending chat message:', chatData);
+      socket.emit('chatMessage', chatData);
       chatInput.value = '';
       autoResizeChatInput();
     }
@@ -345,9 +446,14 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Receive chat messages
-  socket.on('chatMessage', addChatMessage);
+  socket.on('chatMessage', (msg) => {
+    console.log('Received chat message:', msg);
+    addChatMessage(msg);
+  });
 
-  // Generate unique user ID and username
-  const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  const username = 'Player_' + Math.floor(Math.random() * 1000);
+  // Load existing chat messages when joining room
+  socket.on('loadChat', (messages) => {
+    chatMessages.innerHTML = '';
+    messages.forEach(msg => addChatMessage(msg));
+  });
 }); 
