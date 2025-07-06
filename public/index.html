@@ -3,77 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DrawUsTogether</title>
+  <title>DrawUsTogether Room</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jockey+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="main-layout">
-    <!-- LOBBY PANEL -->
-    <aside class="panel lobby-panel">
-      <div class="panel-header">LOBBY</div>
+  <!-- Lobby Screen -->
+  <div class="lobby-screen" id="lobbyScreen">
+    <div class="lobby-panel">
+      <h2>Lobby</h2>
       <form class="create-room-group" onsubmit="return false;">
-        <input type="text" id="newRoomInput" placeholder="New room name" autocomplete="off" />
-        <button id="createRoomBtn" type="button">Create Room</button>
+        <input type="text" id="newRoomInput" placeholder="Room name..." autocomplete="off" />
+        <button id="createRoomBtn" type="button">Create/Join</button>
       </form>
-      <div class="lobby-content">
-        <div class="dropdown-header" id="roomsDropdownHeader">
-          <h3>Available Rooms</h3>
-          <button id="roomsDropdownToggle" aria-label="Toggle room list">▼</button>
-        </div>
-        <ul id="roomList" class="room-list dropdown-list"></ul>
+      <h3>Available Rooms</h3>
+      <ul id="roomList" class="room-list"></ul>
+    </div>
+  </div>
+  <!-- Game Room Screen -->
+  <div class="room-layout" id="gameRoomScreen" style="display:none;">
+    <!-- Brush settings floating panel -->
+    <div class="brush-settings-panel" id="brushSettingsPanel">
+      <button class="close-brush-panel" id="closeBrushPanelBtn" title="Close">✕</button>
+      <h3>Brush Settings</h3>
+      <label>Color: <input type="color" id="colorPicker" value="#000000"></label>
+      <label>Size: <input type="range" id="penSize" min="1" max="50" value="3"></label>
+      <label>Opacity: <input type="range" id="opacity" min="10" max="100" value="100"></label>
+      <div class="brush-actions">
+        <button id="undoBtn" type="button" title="Undo">⟲</button>
+        <button id="redoBtn" type="button" title="Redo">⟳</button>
       </div>
-    </aside>
-
-    <!-- CANVAS PANEL (with inner panel) -->
-    <main class="panel canvas-panel">
-      <div class="inner-panel canvas-inner-panel">
-        <canvas id="drawCanvas" width="800" height="600"></canvas>
+    </div>
+    <!-- Canvas with top-right controls -->
+    <div class="canvas-container">
+      <canvas id="drawCanvas" width="700" height="500"></canvas>
+      <div class="canvas-actions">
+        <button id="downloadBtn" type="button" title="Download Drawing">⬇️</button>
+        <button id="clearBtn" type="button" title="Clear Canvas">🗑️</button>
       </div>
-      <div class="toolbar">
-        <div class="toolbar-group">
-          <span>brush size</span>
-          <input type="range" id="penSize" min="1" max="50" value="3">
-        </div>
-        <div class="toolbar-group">
-          <span>opacity</span>
-          <input type="range" id="opacity" min="10" max="100" value="100">
-        </div>
-        <div class="toolbar-group">
-          <label for="imageInput" class="toolbar-icon-btn" title="Add Image">
-            <span>+</span>
-            <input type="file" id="imageInput" accept="image/*" style="display:none;" />
-          </label>
-        </div>
-        <div class="toolbar-group">
-          <input type="color" id="colorPicker" value="#ff0000">
-        </div>
-        <div class="toolbar-group">
-          <button id="clearBtn" title="Clear Canvas" class="toolbar-icon-btn" type="button">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2" fill="#f00" stroke="#fff"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff"/></svg>
-          </button>
-        </div>
-        <div class="toolbar-group">
-          <button id="saveBtn" title="Download" class="toolbar-icon-btn" type="button">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/><rect x="5" y="19" width="14" height="2" rx="1" fill="#111"/></svg>
-          </button>
-        </div>
-      </div>
-    </main>
-
-    <!-- CHAT PANEL (with inner panel) -->
-    <aside class="panel chat-panel">
+    </div>
+    <!-- Chat panel -->
+    <div class="chat-panel" id="chatPanel">
       <div class="panel-header">CHAT</div>
-      <div class="inner-panel chat-inner-panel">
-        <div id="chatMessages" class="chat-messages"></div>
-      </div>
+      <div id="chatMessages" class="chat-messages"></div>
       <form class="chat-input-container" onsubmit="return false;">
-        <input type="text" id="chatInput" placeholder="Type Message..." autocomplete="off" />
+        <textarea id="chatInput" placeholder="Type Message..." autocomplete="off" rows="1"></textarea>
         <button id="sendBtn" type="button">Send</button>
       </form>
-    </aside>
+    </div>
+    <!-- Toggle buttons under canvas -->
+    <div class="toggle-btn-row">
+      <button class="floating-btn brush-btn" id="toggleBrushBtn" title="Brush Settings">🎨</button>
+      <button class="floating-btn chat-btn" id="toggleChatBtn" title="Show/Hide Chat">💬</button>
+      <button class="floating-btn leave-btn" id="leaveRoomBtn" title="Leave Room">⎋</button>
+    </div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
