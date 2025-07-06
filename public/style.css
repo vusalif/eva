@@ -175,6 +175,62 @@ body {
   color: #222;
   box-sizing: border-box;
 }
+
+.chat-message {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 3px solid #333;
+}
+
+.chat-message .username {
+  font-weight: bold;
+  color: #333;
+  margin-right: 8px;
+  font-family: 'Jockey One', Arial, sans-serif;
+}
+
+.chat-message .time {
+  color: #666;
+  font-size: 0.9rem;
+  margin-left: 8px;
+}
+
+.chat-message.system {
+  background: #f0f0f0;
+  border-left: 3px solid #999;
+  opacity: 0.8;
+}
+
+.chat-message.system .username {
+  color: #666;
+  font-style: italic;
+}
+
+.chat-message.system .time {
+  color: #888;
+}
+
+.chat-message.clear-request {
+  background: #ffe6e6;
+  border-left: 3px solid #cc0000;
+  opacity: 0.9;
+}
+
+.chat-message.clear-request .username {
+  color: #cc0000;
+  font-weight: bold;
+}
+
+.chat-message.clear-request .time {
+  color: #cc0000;
+}
+
+.chat-message.clear-request div {
+  color: #cc0000;
+  font-weight: bold;
+}
 .chat-input-container {
   display: flex;
   align-items: center;

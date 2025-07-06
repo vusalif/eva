@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Join room: hide lobby, show game room
   function joinRoom(roomName) {
     room = roomName;
-    socket.emit('joinRoom', room);
+    socket.emit('joinRoom', room, username);
     lobbyScreen.style.display = 'none';
     gameRoomScreen.style.display = 'flex';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -371,11 +371,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Clear canvas
   clearBtn.addEventListener('click', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    strokes = [];
-    redoStack = [];
-    currentStroke = null;
-    socket.emit('clearCanvas', room);
+    // First send a request message
+    socket.emit('requestClearCanvas', room);
+    
+    // Then clear the canvas after a short delay
+    setTimeout(() => {
+      socket.emit('clearCanvas', room);
+    }, 1000);
   });
 
   // Receive drawing data from others
@@ -409,7 +411,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // Chat logic
   function addChatMessage(msg) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message';
+    let className = 'chat-message';
+    if (msg.type === 'system') {
+      className = 'chat-message system';
+    } else if (msg.type === 'clear-request') {
+      className = 'chat-message clear-request';
+    }
+    messageDiv.className = className;
     messageDiv.innerHTML = `
       <span class="username">${msg.username}</span>
       <span class="time">${msg.time}</span>
@@ -448,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Receive chat messages
   socket.on('chatMessage', (msg) => {
     console.log('Received chat message:', msg);
+    console.log('Message type:', msg.type);
     addChatMessage(msg);
   });
 
